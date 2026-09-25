@@ -330,12 +330,10 @@ func transportHash(insecureSkipVerify bool, caBundle []byte) string {
 
 func transportForAuth(insecureSkipVerify bool, caBundle []byte) http.RoundTripper {
 	caBundle = append([]byte(nil), caBundle...) // defensive copy
-	hash := transportHash(insecureSkipVerify, caBundle)
-
 	if proxyCAPEM, ok := os.LookupEnv(fleetgit.ProxyCABundleEnvVar); ok && proxyCAPEM != "" {
 		proxyBytes := []byte(proxyCAPEM)
 		tmpPool := x509.NewCertPool()
-		if tmpPool.AppendCertsFromPEM(proxyBytes) {
+		if !tmpPool.AppendCertsFromPEM(proxyBytes) {
 			log.Log.Info(fleetgit.ProxyCABundleEnvVar + " is set but contains no valid PEM certificates; ignoring proxy CA bundle")
 		} else {
 			caBundle = append(caBundle, '\n')
@@ -344,6 +342,7 @@ func transportForAuth(insecureSkipVerify bool, caBundle []byte) http.RoundTrippe
 	}
 
 	// We don't need the full hash
+	hash := transportHash(insecureSkipVerify, caBundle)
 
 	// Fast path: valid transport already exists
 	transportsCacheMutex.RLock()
@@ -392,7 +391,7 @@ func transportForAuth(insecureSkipVerify bool, caBundle []byte) http.RoundTrippe
 		pool.AppendCertsFromPEM(caBundle)
 
 		transport.TLSClientConfig.RootCAs = pool
-		transport.TLSClientConfig.MinVersion = tls.VersionTLS13
+		transport.TLSClientConfig.MinVersion = tls.VersionTLS12
 	}
 
 	transportsCache[hash] = transport
