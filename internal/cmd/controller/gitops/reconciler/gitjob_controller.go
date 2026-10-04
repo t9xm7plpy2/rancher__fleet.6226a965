@@ -198,6 +198,7 @@ func (r *GitJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		gitjobDuration.DeleteByReq(req)
 		fetchLatestCommitSuccess.DeleteByReq(req)
 		fetchLatestCommitFailure.DeleteByReq(req)
+		timeToFetchLatestCommit.DeleteByReq(req)
 
 		logger.V(1).Info("Gitrepo deleted, cleaning up pull jobs")
 		return ctrl.Result{}, nil
@@ -279,9 +280,11 @@ func (r *GitJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	oldCommit := gitrepo.Status.Commit
 	oldUpdateGeneration := gitrepo.Status.UpdateGeneration
 	oldObservedGeneration := gitrepo.Status.ObservedGeneration
+	// maybe update the commit from webhooks or polling
+	gitrepo.Status.Commit = getNextCommit(gitrepo.Status)
 
 	res, err := r.manageGitJob(ctx, logger, gitrepo, oldCommit)
-	if err != nil {
+	if err != nil || res.RequeueAfter > 0 {
 		// Restore the status fields that may have been mutated in memory
 		// (by getNextCommit above or by updateGenerationValuesIfNeeded inside
 		// manageGitJob) before persisting the error status. Without this, the
@@ -289,8 +292,8 @@ func (r *GitJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// never retry the failed job creation.
 		// Refers to: https://github.com/rancher/fleet/issues/4948
 		gitrepo.Status.Commit = oldCommit
-		gitrepo.Status.UpdateGeneration = oldObservedGeneration
-		gitrepo.Status.ObservedGeneration = oldUpdateGeneration
+		gitrepo.Status.UpdateGeneration = oldUpdateGeneration
+		gitrepo.Status.ObservedGeneration = oldObservedGeneration
 		return res, updateErrorStatus(ctx, r.Client, req.NamespacedName, gitrepo.Status, err)
 	}
 
