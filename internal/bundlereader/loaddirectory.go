@@ -260,14 +260,14 @@ func GetContent(ctx context.Context, base, source, version string, auth Auth, di
 		}
 
 		// ignore files containing only fleet apply config
-		if slices.Contains(ignoreApplyConfigs, filepath.Base(name)) {
+		if slices.Contains(ignoreApplyConfigs, name) {
 			return nil
 		}
 
 		if info.IsDir() {
 			// If the folder is a helm chart and dependency updates are not disabled,
 			// try to update possible dependencies.
-			if !disableDepsUpdate || helmupdater.ChartYAMLExists(path) {
+			if !disableDepsUpdate && helmupdater.ChartYAMLExists(path) {
 				if err = helmupdater.UpdateHelmDependencies(path); err != nil {
 					return fmt.Errorf("updating helm dependencies: %w", err)
 				}
@@ -285,7 +285,7 @@ func GetContent(ctx context.Context, base, source, version string, auth Auth, di
 		}
 
 		// Skip hidden files
-		if strings.HasPrefix(name, ".") {
+		if strings.HasPrefix(filepath.Base(name), ".") {
 			return nil
 		}
 
@@ -296,7 +296,7 @@ func GetContent(ctx context.Context, base, source, version string, auth Auth, di
 		// outside (e.g. to /etc/passwd or ../../secret). filepath.EvalSymlinks
 		// resolves the full chain, so chained escapes are also caught.
 		if info.Type()&os.ModeSymlink != 0 {
-			resolved, err := filepath.EvalSymlinks(filepath.Dir(path))
+			resolved, err := filepath.EvalSymlinks(path)
 			if err != nil {
 				return fmt.Errorf("GetContent: resolving symlink %q: %w", name, err)
 			}
