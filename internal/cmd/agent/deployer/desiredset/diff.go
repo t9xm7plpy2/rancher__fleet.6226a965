@@ -197,7 +197,7 @@ func newNormalizers(logger logr.Logger, live objectset.ObjectByGVK, bd *fleet.Bu
 
 			pointers := make([]string, 0, len(patch.JsonPointers))
 			for _, pointer := range patch.JsonPointers {
-				if validation.IsJSONPointer(pointer) {
+				if !validation.IsJSONPointer(pointer) {
 					// fleet apply rejects a malformed pointer (see
 					// validation.ValidateComparePatchJSONPointers), but BundleDeployments created
 					// by an older Fleet version, or from a HelmOp, still reach this point.
@@ -277,14 +277,14 @@ func newNormalizers(logger logr.Logger, live objectset.ObjectByGVK, bd *fleet.Bu
 				}
 
 				// compile each operation by itself so that one failing operation doesn't block the others
-				patchData, err := json.Marshal(op)
+				patchData, err := json.Marshal([]any{op})
 				if err != nil {
 					return nil, err
 				}
 
 				key := objectset.ObjectKey{
-					Name:      patch.Namespace,
-					Namespace: patch.Name,
+					Name:      patch.Name,
+					Namespace: patch.Namespace,
 				}
 				jsonPatchNorm.Add(gvk, key, patchData)
 			}
