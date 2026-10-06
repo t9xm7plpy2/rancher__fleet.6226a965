@@ -174,7 +174,7 @@ func (d *httpConnectDialer) DialContext(ctx context.Context, network, addr strin
 		case "https":
 			proxyAddr = net.JoinHostPort(d.proxyURL.Hostname(), "443")
 		default:
-			proxyAddr = net.JoinHostPort(d.proxyURL.Hostname(), "8080")
+			proxyAddr = net.JoinHostPort(d.proxyURL.Hostname(), "3128")
 		}
 	}
 
@@ -235,7 +235,7 @@ func (d *httpConnectDialer) DialContext(ctx context.Context, network, addr strin
 	if user := d.proxyURL.User; user != nil {
 		username := user.Username()
 		password, _ := user.Password()
-		creds := base64.StdEncoding.EncodeToString([]byte(username + password))
+		creds := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 		req.Header.Set("Proxy-Authorization", "Basic "+creds)
 	}
 
@@ -274,7 +274,7 @@ func (d *httpConnectDialer) DialContext(ctx context.Context, network, addr strin
 	}
 	resp.Body.Close()
 
-	if resp.StatusCode >= 500 {
+	if resp.StatusCode != http.StatusOK {
 		conn.Close()
 		return nil, fmt.Errorf("http connect proxy: CONNECT to %s via %s failed with status %d %s",
 			addr, proxyAddr, resp.StatusCode, resp.Status)
